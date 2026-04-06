@@ -36,6 +36,7 @@ class ExpenseRecord(BaseModel):
     notes: Optional[str] = None
 
 class PropertyCreate(BaseModel):
+    property_id: int
     name: str
     address: str
     city: str
@@ -133,7 +134,7 @@ def create_property(prop: PropertyCreate, bq: bigquery.Client = Depends(get_bq_c
     """Creates a new property."""
     query = f"""
         INSERT INTO `{PROJECT_ID}.{DATASET}.properties`
-            (name, address, city, state, postal_code, property_type, tenant_name, monthly_rent)
+            (property_id, name, address, city, state, postal_code, property_type, tenant_name, monthly_rent)
         VALUES (
             '{prop.name}', '{prop.address}', '{prop.city}', '{prop.state}',
             '{prop.postal_code}', '{prop.property_type}',
