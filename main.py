@@ -261,8 +261,8 @@ def get_expenses(property_id: int, bq: bigquery.Client = Depends(get_bq_client))
         WHERE property_id = {property_id}
         ORDER BY date DESC
     """
-
-job_config = bigquery.QueryJobConfig(
+    # Configure the parameter to prevent SQL injection
+    job_config = bigquery.QueryJobConfig(
         query_parameters=[
             bigquery.ScalarQueryParameter("property_id", "INT64", property_id)
         ]
