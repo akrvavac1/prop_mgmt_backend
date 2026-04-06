@@ -306,21 +306,31 @@ def create_expense(property_id: int, record: ExpenseRecord, bq: bigquery.Client 
 @app.delete("/expenses/{expense_id}")
 def delete_expense(expense_id: int, bq: bigquery.Client = Depends(get_bq_client)):
     """Deletes an expense record by ID."""
-    check = f"SELECT expense_id FROM `{PROJECT_ID}.{DATASET}.expenses` WHERE expense_id = {expense_id}"
 
-    job_config = bigquery.QueryJobConfig(
-        query_parameters=[
-            bigquery.ScalarQueryParameter("income_id", "INT64", income_id)
-        ]
-    )
-
-
-    if not list(bq.query(check).result()):
-        raise HTTPException(status_code=404, detail=f"Expense record {expense_id} not found")
+    # Check it exists first
+    check = f"""
+        SELECT expense_id 
+        FROM `{PROJECT_ID}.{DATASET}.expenses` 
+        WHERE expense_id = {expense_id}
+    """
     try:
-        bq.query(f"DELETE FROM `{PROJECT_ID}.{DATASET}.expenses` WHERE expense_id = {expense_id}").result()
+        rows = list(bq.query(check).result())
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Lookup failed: {str(e)}")
+
+    if not rows:
+        raise HTTPException(status_code=404, detail=f"Expense record {expense_id} not found")
+
+    # Now delete it
+    delete_query = f"""
+        DELETE FROM `{PROJECT_ID}.{DATASET}.expenses` 
+        WHERE expense_id = {expense_id}
+    """
+    try:
+        bq.query(delete_query).result()
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Delete failed: {str(e)}")
+
     return {"message": f"Expense record {expense_id} deleted"}
 
 
