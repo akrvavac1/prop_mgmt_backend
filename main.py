@@ -184,7 +184,10 @@ def create_income(property_id: int, record: IncomeRecord, bq: bigquery.Client = 
         SELECT COALESCE(MAX(income_id), 0) + 1 AS next_id
         FROM `{PROJECT_ID}.{DATASET}.income`
     """
-    next_id = list(bq.query(id_query).result())[0]["next_id"]
+    try:
+        next_id = list(bq.query(id_query).result())[0]["next_id"]
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"ID generation failed: {str(e)}")
 
     query = f"""
         INSERT INTO `{PROJECT_ID}.{DATASET}.income`
