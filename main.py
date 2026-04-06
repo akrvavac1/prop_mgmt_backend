@@ -76,7 +76,7 @@ def get_bq_client():
 # Properties
 # ---------------------------------------------------------------------------
 
-@app.get("/properties")
+@app.get("/properties") # works well
 def get_properties(bq: bigquery.Client = Depends(get_bq_client)):
     """
     Returns all properties in the database.
@@ -107,7 +107,7 @@ def get_properties(bq: bigquery.Client = Depends(get_bq_client)):
     properties = [dict(row) for row in results]
     return properties
 
-# second endpoint
+# second endpoint works well
 @app.get("/properties/{property_id}")
 def get_property(property_id: int, bq: bigquery.Client = Depends(get_bq_client)):
     """Returns a single property by ID."""
@@ -127,7 +127,7 @@ def get_property(property_id: int, bq: bigquery.Client = Depends(get_bq_client))
     return dict(rows[0])
 
 
-#post - additional endpoint 1
+#post - additional endpoint 1 (check)
 @app.post("/properties", status_code=201)
 def create_property(prop: PropertyCreate, bq: bigquery.Client = Depends(get_bq_client)):
     """Creates a new property."""
@@ -148,13 +148,13 @@ def create_property(prop: PropertyCreate, bq: bigquery.Client = Depends(get_bq_c
 
 
 
-#Income Section
+#Income Section (needs fixing)
 @app.get("/income/{property_id}")
 def get_income(property_id: int, bq: bigquery.Client = Depends(get_bq_client)):
     """Returns all income records for a property."""
     assert_property_exists(property_id, bq)
     query = f"""
-        SELECT income_id, property_id, amount, source, date, notes
+        SELECT income_id, property_id, amount, date, description
         FROM `{PROJECT_ID}.{DATASET}.income`
         WHERE property_id = {property_id}
         ORDER BY date DESC
