@@ -180,7 +180,7 @@ def create_income(property_id: int, record: IncomeRecord, bq: bigquery.Client = 
     assert_property_exists(property_id, bq)
     query = f"""
         INSERT INTO `{PROJECT_ID}.{DATASET}.income`
-            (property_id, amount, source, date, notes)
+            (income_id, property_id, amount, date, description)
         VALUES (
             {property_id}, {record.amount}, '{record.source}',
             '{record.date}', '{record.notes or ""}'
@@ -250,7 +250,7 @@ def get_income_by_property_type(
 
 
 
-#Expense Section (needs fixing)
+#Expense Section (needs fixing)-fixed
 @app.get("/expenses/{property_id}")
 def get_expenses(property_id: int, bq: bigquery.Client = Depends(get_bq_client)):
     """Returns all expense records for a property."""
@@ -283,7 +283,7 @@ def create_expense(property_id: int, record: ExpenseRecord, bq: bigquery.Client 
     assert_property_exists(property_id, bq)
     query = f"""
         INSERT INTO `{PROJECT_ID}.{DATASET}.expenses`
-            (property_id, amount, category, date, vendor, notes)
+            (expense_id, property_id, amount, date, category, vendor, description)
         VALUES (
             {property_id}, {record.amount}, '{record.category}',
             '{record.date}', '{record.vendor or ""}', '{record.notes or ""}'
