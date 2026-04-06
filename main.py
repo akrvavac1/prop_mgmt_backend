@@ -193,55 +193,30 @@ def create_income(property_id: int, record: IncomeRecord, bq: bigquery.Client = 
     return {"message": "Income record created"}
 
 
-#additional income endpoint 
-@app.get("/income/by-property-type")
-def get_income_by_property_type(
-    property_type: Optional[str] = None,
-    bq: bigquery.Client = Depends(get_bq_client)
-):
+#additional income endpoint (use another get)
+@app.get("/income/{property_id}/monthly")
+def get_income_monthly(property_id: int, bq: bigquery.Client = Depends(get_bq_client)):
     """
-    Returns total income grouped by property type across all properties.
-    Example: /income/by-property-type
-    Example: /income/by-property-type?property_type=multi-family
+    Returns income totals grouped by month for a property.
+    Example: /income/1/monthly
     """
-
-    if property_type:
-        # Filter to a specific property type
-        query = f"""
-            SELECT
-                p.property_type,
-                p.property_id,
-                p.name,
-                p.address,
-                COUNT(i.income_id)  AS record_count,
-                SUM(i.amount)       AS total_income
-            FROM `{PROJECT_ID}.{DATASET}.properties` p
-            LEFT JOIN `{PROJECT_ID}.{DATASET}.income` i ON p.property_id = i.property_id
-            WHERE LOWER(p.property_type) = LOWER('{property_type}')
-            GROUP BY p.property_type, p.property_id, p.name, p.address
-            ORDER BY total_income DESC
-        """
-    else:
-        # No filter — group by property type only
-        query = f"""
-            SELECT
-                p.property_type,
-                COUNT(DISTINCT p.property_id)   AS total_properties,
-                COUNT(i.income_id)              AS record_count,
-                COALESCE(SUM(i.amount), 0)      AS total_income,
-                COALESCE(AVG(i.amount), 0)      AS avg_income_per_record
-            FROM `{PROJECT_ID}.{DATASET}.properties` p
-            LEFT JOIN `{PROJECT_ID}.{DATASET}.income` i ON p.property_id = i.property_id
-            GROUP BY p.property_type
-            ORDER BY total_income DESC
-        """
-
+    assert_property_exists(property_id, bq)
+    query = f"""
+        SELECT
+            FORMAT_DATE('%Y-%m', date)  AS month,
+            COUNT(income_id)            AS record_count,
+            SUM(amount)                 AS total_income,
+            AVG(amount)                 AS avg_income
+        FROM `{PROJECT_ID}.{DATASET}.income`
+        WHERE property_id = {property_id}
+        GROUP BY month
+        ORDER BY month DESC
+    """
     try:
         results = bq.query(query).result()
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Database query failed: {str(e)}")
-
-    return [dict(row) for row in results]    
+    return [dict(row) for row in results]
 
 
 
@@ -301,6 +276,14 @@ def create_expense(property_id: int, record: ExpenseRecord, bq: bigquery.Client 
 def delete_expense(expense_id: int, bq: bigquery.Client = Depends(get_bq_client)):
     """Deletes an expense record by ID."""
     check = f"SELECT expense_id FROM `{PROJECT_ID}.{DATASET}.expenses` WHERE expense_id = {expense_id}"
+
+    job_config = bigquery.QueryJobConfig(
+        query_parameters=[
+            bigquery.ScalarQueryParameter("income_id", "INT64", income_id)
+        ]
+    )
+
+
     if not list(bq.query(check).result()):
         raise HTTPException(status_code=404, detail=f"Expense record {expense_id} not found")
     try:
