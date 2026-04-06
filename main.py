@@ -24,16 +24,15 @@ app.add_middleware(
 
 class IncomeRecord(BaseModel):
     amount: float
-    source: str
     date: date
-    notes: Optional[str] = None
+    description: Optional[str] = None
 
 class ExpenseRecord(BaseModel):
     amount: float
     category: str
     date: date
     vendor: Optional[str] = None
-    notes: Optional[str] = None
+    description: Optional[str] = None
 
 class PropertyCreate(BaseModel):
     property_id: int
