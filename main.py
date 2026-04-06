@@ -45,6 +45,11 @@ class PropertyCreate(BaseModel):
     tenant_name: Optional[str] = None
     monthly_rent: Optional[float] = None
 
+def escape(value: str) -> str:
+    """Escapes single quotes in strings to prevent SQL errors."""
+    return value.replace("'", "\\'") if value else ""
+
+
 
 def assert_property_exists(property_id: int, bq: bigquery.Client):
     query = f"""
