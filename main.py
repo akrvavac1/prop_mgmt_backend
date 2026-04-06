@@ -179,20 +179,30 @@ def get_income(property_id: int, bq: bigquery.Client = Depends(get_bq_client)):
 def create_income(property_id: int, record: IncomeRecord, bq: bigquery.Client = Depends(get_bq_client)):
     """Creates a new income record for a property."""
     assert_property_exists(property_id, bq)
+
+    # Auto-generate next income_id
+    id_query = f"""
+        SELECT COALESCE(MAX(income_id), 0) + 1 AS next_id
+        FROM `{PROJECT_ID}.{DATASET}.income`
+    """
+    next_id = list(bq.query(id_query).result())[0]["next_id"]
+
     query = f"""
         INSERT INTO `{PROJECT_ID}.{DATASET}.income`
             (income_id, property_id, amount, date, description)
         VALUES (
-            {property_id}, {record.amount}, '{record.source}',
-            '{record.date}', '{record.notes or ""}'
+            {next_id},
+            {property_id},
+            {record.amount},
+            '{record.date}',
+            '{escape(record.description or "")}'
         )
     """
     try:
         bq.query(query).result()
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Insert failed: {str(e)}")
-    return {"message": "Income record created"}
-
+    return {"message": "Income record created", "income_id": next_id}
 
 #additional income endpoint (use another get)
 @app.get("/income/{property_id}/monthly")
@@ -257,19 +267,32 @@ def get_expenses(property_id: int, bq: bigquery.Client = Depends(get_bq_client))
 def create_expense(property_id: int, record: ExpenseRecord, bq: bigquery.Client = Depends(get_bq_client)):
     """Creates a new expense record for a property."""
     assert_property_exists(property_id, bq)
+
+    # Auto-generate next expense_id
+    id_query = f"""
+        SELECT COALESCE(MAX(expense_id), 0) + 1 AS next_id
+        FROM `{PROJECT_ID}.{DATASET}.expenses`
+    """
+    next_id = list(bq.query(id_query).result())[0]["next_id"]
+
     query = f"""
         INSERT INTO `{PROJECT_ID}.{DATASET}.expenses`
             (expense_id, property_id, amount, date, category, vendor, description)
         VALUES (
-            {property_id}, {record.amount}, '{record.category}',
-            '{record.date}', '{record.vendor or ""}', '{record.notes or ""}'
+            {next_id},
+            {property_id},
+            {record.amount},
+            '{record.date}',
+            '{escape(record.category)}',
+            '{escape(record.vendor or "")}',
+            '{escape(record.description or "")}'
         )
     """
     try:
         bq.query(query).result()
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Insert failed: {str(e)}")
-    return {"message": "Expense record created"}
+    return {"message": "Expense record created", "expense_id": next_id}
 
 
 #additional expense endpoint
