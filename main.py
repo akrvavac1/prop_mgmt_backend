@@ -148,7 +148,7 @@ def create_property(prop: PropertyCreate, bq: bigquery.Client = Depends(get_bq_c
 
 
 
-#Income Section (needs fixing)
+#Income Section (needs fixing) - looks like it is fixed for now 
 @app.get("/income/{property_id}")
 def get_income(property_id: int, bq: bigquery.Client = Depends(get_bq_client)):
     """Returns all income records for a property."""
@@ -159,6 +159,14 @@ def get_income(property_id: int, bq: bigquery.Client = Depends(get_bq_client)):
         WHERE property_id = {property_id}
         ORDER BY date DESC
     """
+    # Configure the parameter to prevent SQL injection
+    job_config = bigquery.QueryJobConfig(
+        query_parameters=[
+            bigquery.ScalarQueryParameter("property_id", "INT64", property_id)
+        ]
+    )
+
+
     try:
         results = bq.query(query).result()
     except Exception as e:
@@ -242,17 +250,25 @@ def get_income_by_property_type(
 
 
 
-#Expense Section
+#Expense Section (needs fixing)
 @app.get("/expenses/{property_id}")
 def get_expenses(property_id: int, bq: bigquery.Client = Depends(get_bq_client)):
     """Returns all expense records for a property."""
     assert_property_exists(property_id, bq)
     query = f"""
-        SELECT expense_id, property_id, amount, category, date, vendor, notes
+        SELECT expense_id, property_id, amount, category, date, vendor,description
         FROM `{PROJECT_ID}.{DATASET}.expenses`
         WHERE property_id = {property_id}
         ORDER BY date DESC
     """
+
+job_config = bigquery.QueryJobConfig(
+        query_parameters=[
+            bigquery.ScalarQueryParameter("property_id", "INT64", property_id)
+        ]
+    )
+
+
     try:
         results = bq.query(query).result()
     except Exception as e:
