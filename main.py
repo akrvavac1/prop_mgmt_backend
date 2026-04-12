@@ -45,6 +45,18 @@ class PropertyCreate(BaseModel):
     tenant_name: Optional[str] = None
     monthly_rent: Optional[float] = None
 
+class PropertyUpdate(BaseModel):
+    name: Optional[str] = None
+    address: Optional[str] = None
+    city: Optional[str] = None
+    state: Optional[str] = None
+    postal_code: Optional[str] = None
+    property_type: Optional[str] = None
+    tenant_name: Optional[str] = None
+    monthly_rent: Optional[float] = None
+
+
+
 def escape(value: str) -> str:
     """Escapes single quotes in strings to prevent SQL errors."""
     return value.replace("'", "\\'") if value else ""
@@ -151,7 +163,62 @@ def create_property(prop: PropertyCreate, bq: bigquery.Client = Depends(get_bq_c
         raise HTTPException(status_code=500, detail=f"Insert failed: {str(e)}")
     return {"message": "Property created successfully"}
 
-
+#NEW: Update a property by ID
+@app.put("/properties/{property_id}")
+def update_property(property_id: int, prop: PropertyUpdate, bq: bigquery.Client = Depends(get_bq_client)):
+    """Updates an existing property by ID. Only provide the fields you want to change."""
+    assert_property_exists(property_id, bq)
+ 
+    # Build SET clause only for fields that were actually provided
+    updates = []
+    if prop.name is not None:
+        updates.append(f"name = '{escape(prop.name)}'")
+    if prop.address is not None:
+        updates.append(f"address = '{escape(prop.address)}'")
+    if prop.city is not None:
+        updates.append(f"city = '{escape(prop.city)}'")
+    if prop.state is not None:
+        updates.append(f"state = '{escape(prop.state)}'")
+    if prop.postal_code is not None:
+        updates.append(f"postal_code = '{escape(prop.postal_code)}'")
+    if prop.property_type is not None:
+        updates.append(f"property_type = '{escape(prop.property_type)}'")
+    if prop.tenant_name is not None:
+        updates.append(f"tenant_name = '{escape(prop.tenant_name)}'")
+    if prop.monthly_rent is not None:
+        updates.append(f"monthly_rent = {prop.monthly_rent}")
+ 
+    if not updates:
+        raise HTTPException(status_code=400, detail="No fields provided to update")
+ 
+    query = f"""
+        UPDATE `{PROJECT_ID}.{DATASET}.properties`
+        SET {', '.join(updates)}
+        WHERE property_id = {property_id}
+    """
+    try:
+        bq.query(query).result()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Update failed: {str(e)}")
+    return {"message": f"Property {property_id} updated successfully"}
+ 
+ 
+# ✅ NEW: Delete a property by ID
+@app.delete("/properties/{property_id}")
+def delete_property(property_id: int, bq: bigquery.Client = Depends(get_bq_client)):
+    """Deletes a property by ID."""
+    assert_property_exists(property_id, bq)
+ 
+    query = f"""
+        DELETE FROM `{PROJECT_ID}.{DATASET}.properties`
+        WHERE property_id = {property_id}
+    """
+    try:
+        bq.query(query).result()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Delete failed: {str(e)}")
+    return {"message": f"Property {property_id} deleted successfully"}
+ 
 
 #Income Section (needs fixing) - looks like it is fixed for now 
 @app.get("/income/{property_id}")
